@@ -119,10 +119,10 @@ export interface GeneratedEmail {
   body: string;
 }
 
-export async function generatePersonalizedEmail(wholesaler: Wholesaler, senderName: string, customPoints?: string): Promise<GeneratedEmail> {
+export async function generatePersonalizedEmail(wholesaler: Wholesaler, senderName: string, customPoints?: string, language: string = 'English'): Promise<GeneratedEmail> {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   
-  const prompt = `Write a professional and personalized outreach email to a tourism wholesaler.
+  const prompt = `Write a professional and personalized outreach email to a tourism wholesaler in ${language}.
   
   Target Wholesaler:
   - Name: ${wholesaler.name}
@@ -133,13 +133,14 @@ export async function generatePersonalizedEmail(wholesaler: Wholesaler, senderNa
   ${customPoints ? `\nSpecific Points/Proposal to include:\n${customPoints}` : ''}
   
   The email should:
-  1. Have a catchy, professional subject line.
-  2. Be professional yet engaging and warm.
-  3. Reference their specific specialty: "${wholesaler.description}".
-  4. Propose a potential partnership for international group packages.
-  ${customPoints ? `5. Integrate the following specific points naturally: "${customPoints}"` : ''}
-  6. Include a clear call to action (e.g., a brief meeting or a call).
-  7. Use the sender name "${senderName}" in the signature.
+  1. Be written entirely in ${language}.
+  2. Have a catchy, professional subject line.
+  3. Be professional yet engaging and warm.
+  4. Reference their specific specialty: "${wholesaler.description}".
+  5. Propose a potential partnership for international group packages.
+  ${customPoints ? `6. Integrate the following specific points naturally: "${customPoints}"` : ''}
+  7. Include a clear call to action (e.g., a brief meeting or a call).
+  8. Use the sender name "${senderName}" in the signature.
   
   Return the response as a JSON object with two fields: "subject" and "body".`;
 

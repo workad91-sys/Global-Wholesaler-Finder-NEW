@@ -28,6 +28,7 @@ export default function App() {
   const [leadType, setLeadType] = useState<'inbound' | 'outbound' | 'both' | 'logistics' | 'local_operator' | 'dried_fruits_nuts' | 'dates_supplier' | 'food_distributor' | 'fmcg_wholesaler'>('both');
   const [specialization, setSpecialization] = useState('');
   const [senderName, setSenderName] = useState('');
+  const [emailLanguage, setEmailLanguage] = useState('English');
   const [customPoints, setCustomPoints] = useState('');
   const [leadsCount, setLeadsCount] = useState(5);
   const [contactedLeads, setContactedLeads] = useState<string[]>([]);
@@ -107,7 +108,7 @@ export default function App() {
     
     setGeneratingEmailFor(wholesaler.name);
     try {
-      const email = await generatePersonalizedEmail(wholesaler, senderName, customPoints);
+      const email = await generatePersonalizedEmail(wholesaler, senderName, customPoints, emailLanguage);
       setGeneratedEmail({ 
         wholesaler: wholesaler.name, 
         subject: email.subject,
@@ -287,14 +288,14 @@ export default function App() {
                 </motion.div>
               )}
 
-              {/* Sender Name & Leads Number Field */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Sender Name, Language & Leads Number Field */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <User className="w-5 h-5 text-blue-600" />
                     <h2 className="text-lg font-bold tracking-tight">From (Sender Name)</h2>
                   </div>
-                  <p className="text-xs text-gray-400 mb-3">This name will be used to sign the personalized emails generated for each lead.</p>
+                  <p className="text-xs text-gray-400 mb-3">This name will be used to sign the personalized emails.</p>
                   <div className="relative">
                     <input
                       type="text"
@@ -303,6 +304,34 @@ export default function App() {
                       placeholder="e.g. ChatGPT"
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                     />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Globe className="w-5 h-5 text-blue-600" />
+                    <h2 className="text-lg font-bold tracking-tight">Email Language</h2>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-3">The language the AI will use to write the outreach email.</p>
+                  <div className="relative">
+                    <select
+                      value={emailLanguage}
+                      onChange={(e) => setEmailLanguage(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="English">English</option>
+                      <option value="Spanish">Spanish</option>
+                      <option value="Portuguese">Portuguese</option>
+                      <option value="French">French</option>
+                      <option value="German">German</option>
+                      <option value="Italian">Italian</option>
+                      <option value="Arabic">Arabic</option>
+                      <option value="Chinese">Chinese</option>
+                      <option value="Japanese">Japanese</option>
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <Filter className="w-4 h-4 text-gray-400" />
+                    </div>
                   </div>
                 </div>
 
