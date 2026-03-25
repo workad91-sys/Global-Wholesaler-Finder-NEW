@@ -1,0 +1,5 @@
+{
+  "name": "Global Tourism Wholesaler Finder",
+  "description": "Find tourism wholesalers (mayoristas) specializing in international group packages across Spain, Portugal, Mexico, and LATAM using Google Maps grounding.",
+  "requestFramePermissions": ["geolocation"]
+}
