@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Globe, Loader2, ExternalLink, Building2, Info, Mail, Copy, Check, Filter, Sparkles, X, User, Phone, MessageSquare, Key } from 'lucide-react';
+import { Search, MapPin, Globe, Loader2, ExternalLink, Building2, Info, Mail, Copy, Check, Filter, Sparkles, X, User, Phone, MessageSquare, Key, ChevronDown, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
 import { findWholesalers, Wholesaler, generatePersonalizedEmail, playSuccessAudio } from './services/geminiService';
@@ -52,6 +52,34 @@ export default function App() {
   const [searchStartTime, setSearchStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [finalSearchTime, setFinalSearchTime] = useState<number | null>(null);
+  const [expandedContinents, setExpandedContinents] = useState<string[]>([]);
+
+  const toggleContinentExpand = (continent: string) => {
+    setExpandedContinents(prev => 
+      prev.includes(continent) 
+        ? prev.filter(c => c !== continent) 
+        : [...prev, continent]
+    );
+  };
+
+  const isWorldwideSelected = selectedRegions.length === ALL_COUNTRIES.length && ALL_COUNTRIES.length > 0;
+
+  const toggleWorldwide = () => {
+    if (isWorldwideSelected) {
+      setSelectedRegions([]);
+    } else {
+      setSelectedRegions([...ALL_COUNTRIES]);
+    }
+  };
+
+  const toggleContinentSelection = (continent: string, countries: string[]) => {
+    const allInContinent = countries.every(c => selectedRegions.includes(c));
+    if (allInContinent) {
+      setSelectedRegions(prev => prev.filter(c => !countries.includes(c)));
+    } else {
+      setSelectedRegions(prev => Array.from(new Set([...prev, ...countries])));
+    }
+  };
 
   // Timer effect
   useEffect(() => {
@@ -245,55 +273,89 @@ export default function App() {
                 </span>
               </div>
               
-              <div className="space-y-6 max-h-[440px] overflow-y-auto pr-2 custom-scrollbar">
-                {Object.entries(WORLDWIDE_REGIONS).map(([continent, countries]) => (
-                  <div key={continent} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100/50 space-y-3">
-                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                      <div className="flex items-center gap-2">
-                        <Globe className="w-3.5 h-3.5 text-blue-500" />
-                        <h3 className="text-xs font-black text-gray-700 uppercase tracking-widest">{continent}</h3>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          const allInContinent = countries.every(c => selectedRegions.includes(c));
-                          if (allInContinent) {
-                            setSelectedRegions(prev => prev.filter(c => !countries.includes(c)));
-                          } else {
-                            setSelectedRegions(prev => Array.from(new Set([...prev, ...countries])));
-                          }
-                        }}
-                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 px-2 py-1 rounded-md"
-                      >
-                        {countries.every(c => selectedRegions.includes(c)) ? 'Deselect All' : 'Select All'}
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {countries.map(region => (
-                        <button
-                          key={region}
-                          onClick={() => toggleRegion(region)}
-                          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border ${
-                            selectedRegions.includes(region)
-                              ? 'bg-blue-600 border-blue-600 text-white shadow-sm scale-[1.02]'
-                              : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600'
+              <div className="space-y-3 max-h-[440px] overflow-y-auto pr-2 custom-scrollbar">
+                {/* Worldwide Option */}
+                <button
+                  onClick={toggleWorldwide}
+                  className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                    isWorldwideSelected
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                      : 'bg-gray-50 border-gray-100 text-gray-700 hover:border-blue-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Globe className={`w-5 h-5 ${isWorldwideSelected ? 'text-white' : 'text-blue-600'}`} />
+                    <span className="text-sm font-bold uppercase tracking-wider">Worldwide</span>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    isWorldwideSelected ? 'bg-white border-white' : 'border-gray-300'
+                  }`}>
+                    {isWorldwideSelected && <Check className="w-3 h-3 text-blue-600" />}
+                  </div>
+                </button>
+
+                {Object.entries(WORLDWIDE_REGIONS).map(([continent, countries]) => {
+                  const isExpanded = expandedContinents.includes(continent);
+                  const allInContinent = countries.every(c => selectedRegions.includes(c));
+                  const someInContinent = countries.some(c => selectedRegions.includes(c));
+                  
+                  return (
+                    <div key={continent} className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all">
+                      <div className={`flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors ${isExpanded ? 'border-b border-gray-50' : ''}`}>
+                        <div className="flex items-center gap-3 flex-1" onClick={() => toggleContinentExpand(continent)}>
+                          {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                          <span className="text-sm font-bold text-gray-700 uppercase tracking-wider">{continent}</span>
+                        </div>
+                        
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleContinentSelection(continent, countries);
+                          }}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all border ${
+                            allInContinent
+                              ? 'bg-blue-600 border-blue-600 text-white'
+                              : someInContinent
+                                ? 'bg-blue-50 border-blue-200 text-blue-600'
+                                : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'
                           }`}
                         >
-                          {region}
+                          {allInContinent ? 'Deselect All' : 'Select All'}
                         </button>
-                      ))}
+                      </div>
+                      
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="bg-gray-50/50 p-4"
+                          >
+                            <div className="flex flex-wrap gap-2">
+                              {countries.map(region => (
+                                <button
+                                  key={region}
+                                  onClick={() => toggleRegion(region)}
+                                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all border ${
+                                    selectedRegions.includes(region)
+                                      ? 'bg-blue-600 border-blue-600 text-white shadow-sm scale-[1.02]'
+                                      : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600'
+                                  }`}
+                                >
+                                  {region}
+                                </button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               
-              <div className="mt-4 pt-4 border-t border-gray-50 flex gap-4">
-                <button 
-                  onClick={() => setSelectedRegions(selectedRegions.length === ALL_COUNTRIES.length ? [] : [...ALL_COUNTRIES])}
-                  className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  {selectedRegions.length === ALL_COUNTRIES.length ? 'Deselect All' : 'Select All Worldwide'}
-                </button>
-              </div>
+              {/* Remove the old Worldwide button since it's now at the top */}
             </div>
 
             <div className="space-y-6">
