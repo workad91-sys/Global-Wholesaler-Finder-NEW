@@ -3,10 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Search, MapPin, Globe, Loader2, ExternalLink, Building2, Info, Mail, Copy, Check, Filter, Sparkles, X, User, Phone, MessageSquare } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, MapPin, Globe, Loader2, ExternalLink, Building2, Info, Mail, Copy, Check, Filter, Sparkles, X, User, Phone, MessageSquare, Key } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { findWholesalers, Wholesaler, generatePersonalizedEmail } from './services/geminiService';
+import confetti from 'canvas-confetti';
+import { findWholesalers, Wholesaler, generatePersonalizedEmail, playSuccessAudio } from './services/geminiService';
+
+declare global {
+  interface Window {
+    aistudio: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}
 
 interface Result {
   region: string;
@@ -38,6 +48,40 @@ export default function App() {
   const [totalFound, setTotalFound] = useState(0);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
   const [currentRegion, setCurrentRegion] = useState<string | null>(null);
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [searchStartTime, setSearchStartTime] = useState<number | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [finalSearchTime, setFinalSearchTime] = useState<number | null>(null);
+
+  // Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isLoading && searchStartTime) {
+      interval = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - searchStartTime) / 1000));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isLoading, searchStartTime]);
+
+  // Check for API Key on mount
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio?.hasSelectedApiKey) {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setHasApiKey(hasKey);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleConnectKey = async () => {
+    if (window.aistudio?.openSelectKey) {
+      await window.aistudio.openSelectKey();
+      // Assume success as per guidelines
+      setHasApiKey(true);
+    }
+  };
 
   // Persistence for contacted leads
   React.useEffect(() => {
@@ -77,6 +121,9 @@ export default function App() {
     setError(null);
     setResults([]);
     setTotalFound(0);
+    setElapsedTime(0);
+    setFinalSearchTime(null);
+    setSearchStartTime(Date.now());
     
     try {
       for (const region of selectedRegions) {
@@ -91,12 +138,29 @@ export default function App() {
         
         setTotalFound(prev => prev + res.wholesalers.length);
       }
+
+      // Trigger celebration if leads were found
+      setTotalFound(currentTotal => {
+        if (currentTotal > 0) {
+          confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd']
+          });
+          
+          // Play success audio
+          playSuccessAudio();
+        }
+        return currentTotal;
+      });
     } catch (err: any) {
       setError("Failed to fetch data. Please check your connection or API key.");
       console.error(err);
     } finally {
       setIsLoading(false);
       setCurrentRegion(null);
+      setFinalSearchTime(Math.floor((Date.now() - (searchStartTime || Date.now())) / 1000));
     }
   };
 
@@ -152,26 +216,16 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-4 w-full md:w-auto">
-            <div className="hidden sm:block text-right">
-              <div className="text-sm font-bold text-blue-600">{totalFound}</div>
-              <div className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">Leads Found</div>
-            </div>
             <button
-              onClick={startSearch}
-              disabled={isLoading || selectedRegions.length === 0}
-              className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white px-6 py-2.5 rounded-full font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100 active:scale-95"
+              onClick={handleConnectKey}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                hasApiKey 
+                  ? 'bg-green-50 border-green-200 text-green-700' 
+                  : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+              }`}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Searching {currentRegion}...
-                </>
-              ) : (
-                <>
-                  <Search className="w-4 h-4" />
-                  Find Wholesalers
-                </>
-              )}
+              <Key className="w-3.5 h-3.5" />
+              {hasApiKey ? 'API Key Connected' : 'Connect API Key'}
             </button>
           </div>
         </div>
@@ -366,8 +420,54 @@ export default function App() {
                   onChange={(e) => setCustomPoints(e.target.value)}
                   placeholder="e.g. We offer exclusive 20% commission for new partners, or We specialize in luxury eco-tours in the Amazon..."
                   rows={3}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all resize-none"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all resize-none mb-6"
                 />
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-blue-50 px-4 py-2 rounded-2xl border border-blue-100">
+                      <div className="text-xl font-black text-blue-600 leading-none">{totalFound}</div>
+                      <div className="text-[10px] text-blue-400 uppercase font-bold tracking-widest mt-1">Leads Found</div>
+                    </div>
+                    
+                    {(isLoading || finalSearchTime !== null) && (
+                      <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-2xl border border-gray-100">
+                        <div className="flex flex-col">
+                          <div className="text-sm font-black text-gray-700 leading-none">
+                            {isLoading ? `${elapsedTime}s` : `${finalSearchTime}s`}
+                          </div>
+                          <div className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-1">
+                            {isLoading ? 'Searching...' : 'Total Time'}
+                          </div>
+                        </div>
+                        {isLoading && (
+                          <div className="flex items-center gap-2 text-blue-600">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline">Finding in {currentRegion}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={startSearch}
+                    disabled={isLoading || selectedRegions.length === 0}
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl shadow-blue-200 active:scale-[0.98] hover:shadow-blue-300"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-5 h-5" />
+                        Find Wholesalers
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
